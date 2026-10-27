@@ -99,3 +99,73 @@ def cusum_detector(
             first_alarm = t
 
     return cusum_values, first_alarm
+
+
+
+def adaptive_cusum_detector(
+    returns,
+    window=50,
+    target_mean=0.001,
+    allowance=0.1,
+    threshold=25.0,
+    min_volatility=1e-6,
+):
+    """
+    Downward CUSUM using historical volatility estimates.
+
+    At time t, volatility is estimated using only
+    returns observed before time t.
+
+    Returns:
+        statistics: CUSUM values at each observation
+        first_alarm: index of the first alarm, or None
+    """
+    from edgeguard.volatility import rolling_volatility
+
+    returns = np.asarray(returns, dtype=float)
+
+    if returns.ndim != 1 or len(returns) < 3:
+        raise ValueError("Returns must be a 1D array with at least 3 values")
+
+    if not np.all(np.isfinite(returns)):
+        raise ValueError("Returns must be finite")
+
+    if isinstance(window, (bool, np.bool_)) or not isinstance(
+        window, (int, np.integer)
+    ):
+        raise ValueError("Window must be an integer")
+
+    if window < 2 or window >= len(returns):
+        raise ValueError("Invalid window")
+
+    for value in (target_mean, allowance, threshold, min_volatility):
+        if not np.isfinite(value):
+            raise ValueError("Parameters must be finite")
+
+    if allowance < 0 or threshold <= 0 or min_volatility <= 0:
+        raise ValueError("Invalid detector parameters")
+
+    volatility = rolling_volatility(returns, window=window)
+
+    statistics = np.zeros(len(returns))
+    statistic = 0.0
+    first_alarm = None
+
+    for t in range(window, len(returns)):
+        sigma_hat = max(volatility[t], min_volatility)
+
+        normalized_deviation = (
+            target_mean - returns[t]
+        ) / sigma_hat
+
+        statistic = max(
+            0.0,
+            statistic + normalized_deviation - allowance
+        )
+
+        statistics[t] = statistic
+
+        if first_alarm is None and statistic > threshold:
+            first_alarm = t
+
+    return statistics, first_alarm
