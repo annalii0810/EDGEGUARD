@@ -1,182 +1,490 @@
 
-EDGEGUARD
+# EDGEGUARD
 
-Sequential Statistical Monitoring for Quantitative Trading Strategies
+## Sequential Statistical Monitoring for Quantitative Trading Strategies
 
-A reproducible Python research project investigating how sequential change-detection methods identify deterioration in simulated trading strategy profitability.
-1. Project Overview
+*A reproducible Python research project investigating how sequential change-detection methods identify deterioration in simulated trading strategy profitability.*
 
-Quantitative trading strategies can lose their statistical advantage as market conditions change. Temporary losses do not necessarily mean the strategy has deteriorated, while a deteriorating strategy may still occasionally produce positive returns.
+## 1. Project Overview
 
-EDGEGUARD investigates the tradeoffs among false alarms, successful detection, missed changes, and detection delay. It implements rolling-mean monitoring, downward CUSUM, historical volatility estimation, and volatility-normalized adaptive CUSUM, then evaluates them on seeded synthetic returns.
+Quantitative trading strategies can lose their statistical advantage as market conditions change. Temporary losses do not necessarily mean that a strategy has deteriorated, while a deteriorating strategy may still occasionally produce positive returns.
 
-Current implementation: Experiments 01–13 completed; 25 automated tests passed in the latest full test run. Phase 2 implementation and baseline comparisons are complete, while broader robustness validation remains future work.
-2. Research Question
+EDGEGUARD investigates the trade-offs among false alarms, successful detection, missed changes, and detection delay.
+
+The project implements:
+
+- Rolling-mean monitoring
+- Downward cumulative sum (CUSUM) detection
+- Historical volatility estimation
+- Volatility-normalized adaptive CUSUM
+- Independent calibration and evaluation
+- Reproducible Monte Carlo simulations
+
+**Current status:** Experiments 01–13 completed, with 25 automated tests passing in the latest full test run. Phase 2 implementation and baseline comparisons are complete. Broader robustness validation remains future work.
+
+## 2. Research Question
 
 Can sequential statistical change-detection methods identify deterioration in a quantitative trading strategy's expected return while controlling false alarms and minimizing detection delay?
 
-A related question is whether estimating volatility causally from historical returns produces performance comparable to an oracle CUSUM that knows the simulator's true volatility.
-3. Mathematical Framework
-3.1 Synthetic return model
+A related question is whether estimating volatility causally from historical returns can provide performance comparable to a detector that knows the true simulated volatility.
 
-The simulation generates independent Gaussian returns:
-Rt=μt+σZt,Zt∼N(0,1).
-Rt​=μt​+σZt​,Zt​∼N(0,1).
+## 3. Mathematical Framework
 
-Here, RtRt​ is the observed return, μtμt​ is its expected value, and σσ is the standard deviation. The baseline regime-change scenario uses
-μt={0.001t<500,−0.001t≥500.
-μt​={0.001−0.001​t<500,t≥500.​
+### 3.1 Synthetic Return Model
 
-The simulated horizon is 1,000 observations. Unless otherwise specified, the change occurs at index 500, with baseline σ=0.01σ=0.01. Additional experiments vary σσ among 0.005, 0.010, 0.020, and 0.030. These are synthetic assumptions, not a model validated on live market returns.
-3.2 Rolling-mean detector
+Strategy returns are modeled as:
 
-For a window of ww observations:
-R‾t=1w∑i=t−w+1tRi.
-Rt​=w1​i=t−w+1∑t​Ri​.
+```math
+R_t = \mu_t + \sigma Z_t
+```
 
-The initial rule triggers when R‾t<0Rt​<0. A more conservative experimental rule triggers when
-R‾t<−kσw.
-Rt​<−kw
-​σ​.
+where:
 
-The kk-based rule is a heuristic for a sequential monitoring process; it does not itself guarantee a specified experiment-wide false-alarm probability.
-3.3 Downward CUSUM
+- $R_t$ is the simulated strategy return at time $t$.
+- $\mu_t$ is the expected return at time $t$.
+- $\sigma$ is the return volatility.
+- $Z_t$ is independent standard normal noise.
 
-The original CUSUM accumulates negative deviations from a target return:
-St=max⁡(0,St−1+μ0−Rt−δ),S−1=0.
-St​=max(0,St−1​+μ0​−Rt​−δ),S−1​=0.
+The noise follows:
 
-It triggers the first alarm when St>hSt​>h. The allowance δδ and threshold hh are measured in the raw-return scale.
-3.4 Causal historical volatility estimator
+```math
+Z_t \sim \mathcal{N}(0,1)
+```
 
-For t≥wt≥w, the historical volatility estimator uses only the previous ww observations:
-σ^t=std⁡sample(Rt−w,…,Rt−1).
-σ
-t​=stdsample​(Rt−w​,…,Rt−1​).
+### 3.2 Regime-Change Model
 
-The implementation uses sample standard deviation (ddof=1), with NaN for the initial indices lacking a complete historical window. This construction excludes the current return and future observations from the volatility estimate.
-3.5 Adaptive CUSUM
+The expected return changes according to:
 
-Adaptive CUSUM normalizes each deviation using the historical estimate and a minimum volatility floor:
-At=max⁡(0,At−1+μ0−Rtmax⁡(σ^t,σmin⁡)−k).
-At​=max(0,At−1​+max(σ
-t​,σmin​)μ0​−Rt​​−k).
+```math
+\mu_t =
+\begin{cases}
+0.001, & t < 500 \\
+-0.001, & t \ge 500
+\end{cases}
+```
 
-An alarm occurs when At>hAAt​>hA​. The statistic starts once a historical volatility window is available. The floor prevents division by zero but can magnify small deviations if set too low. Experiments therefore examine the floor's effect rather than treating it as automatically safe.
+where:
 
-CUSUM, rolling means, and volatility normalization build on established statistical ideas. The current project does not claim a novel algorithm.
-4. Experimental Methodology
+- $\mu_t$ is the expected return at time $t$.
+- $\tau = 500$ is the simulated change point.
+- $\mu_{\text{before}} = 0.001$ is the expected return before deterioration.
+- $\mu_{\text{after}} = -0.001$ is the expected return after deterioration.
 
-    Reproducibility: NumPy-seeded synthetic simulations. Paired detector comparisons reuse the same simulated return sequences; these paired results must not be treated as independent replications.
-    Premature alarm: First alarm occurs before the known change point ττ.
-    Successful detection: First alarm occurs at or after ττ within the observation horizon.
-    Missed detection: No alarm occurs within the horizon.
-    Conditional detection delay: D=talarm−τD=talarm​−τ, averaged only across successful detections.
-    No-change false-alarm proportion: Number of no-change simulations with at least one alarm divided by the total number of no-change simulations.
+| Parameter | Value |
+|---|---:|
+| Observations per simulation | 1,000 |
+| Change point ($\tau$) | 500 |
+| Expected return before change | +0.10% |
+| Expected return after change | -0.10% |
+| Baseline volatility ($\sigma$) | 1.00% |
 
-The first-alarm outcomes are mutually exclusive. Conditional delay must be interpreted alongside the success and miss rates. The false-alarm target is a probability of at least one alarm over 1,000 observations, not a per-observation probability.
+These are simplified synthetic assumptions rather than a realistic model of live trading profitability.
 
-Thresholds in the later experiments are selected using calibration simulations, then evaluated on separate no-change and regime-change simulations. Empirical 95th-percentile thresholds target approximately 5% no-change false alarms, subject to Monte Carlo uncertainty.
-5. Experimental Results
-Experiment 01 — Synthetic strategy edge deterioration
+## 4. Statistical Detection Algorithms
 
-A 1,000-observation series changes expected return at index 500. In the recorded seeded run, the observed average before the change was +0.0869%, and after the change was −0.1447%; realized averages differ from theoretical means because of sampling noise.
+### 4.1 Rolling-Mean Detector
 
-Experiment 02 — Initial rolling-mean detection
+The rolling mean is:
 
-With window 50, zero threshold, and 500 regime-change simulations: 498 premature alarms, 2 successful detections, and 0 missed detections. The premature-alarm proportion was 99.6%.
-Experiment 03 — Rolling-window comparison
-Window	Premature alarms	Successful detections	Conditional average delay
-10	100.0%	0.0%	N/A
-50	99.6%	0.4%	50.00
-100	89.6%	10.4%	50.15
-200	42.2%	57.8%	97.76
-Experiment 04 — No-change false alarms
-Window	Probability of at least one false alarm
-10	100.0%
-50	100.0%
-100	98.6%
-200	75.6%
-Experiment 05 — Rolling-mean threshold comparison
-Threshold	Premature alarms	Successful detections	Missed detections	Conditional delay
-k=0k=0	99.6%	0.4%	0.0%	50.00
-k=1k=1	78.8%	21.2%	0.0%	61.08
-k=2k=2	16.4%	80.4%	3.2%	159.43
-k=3k=3	0.8%	47.2%	52.0%	248.56
+```math
+\bar{R}_t =
+\frac{1}{w}
+\sum_{i=t-w+1}^{t} R_i
+```
 
-More conservative thresholds reduced premature alarms but could increase detection delay and missed detections.
-Experiment 06 — Calibrated rolling-mean detection
+where:
 
-A threshold of −0.003852 was selected using 1,000 no-change calibration simulations. Independent evaluation yielded 6.6% no-change false alarms, 3.8% premature alarms, 59.6% successful detections, 36.6% missed detections, and 213.17 conditional average delay.
-Experiment 07 — Calibrated original CUSUM
+- $\bar{R}_t$ is the rolling average return.
+- $w$ is the rolling-window size.
+- $R_i$ is the observed return at time $i$.
 
-A threshold of 0.273950 was selected at baseline volatility σ=0.01σ=0.01. Independent evaluation yielded 6.8% no-change false alarms, 2.8% premature alarms, 93.8% successful detections, 3.4% missed detections, and 195.42 conditional average delay.
-Experiment 08 — Volatility robustness with fixed thresholds
+An alarm occurs when:
 
-The rolling-mean and original CUSUM detectors were tested across four volatility levels. Their fixed thresholds were not recalibrated for each volatility. The original CUSUM results were:
-Volatility	Premature alarms	Successful detections	Missed detections	Conditional delay
-0.005	0.0%	98.4%	1.6%	252.57
-0.010	1.8%	94.4%	3.8%	191.29
-0.020	73.8%	26.0%	0.2%	106.14
-0.030	97.6%	2.4%	0.0%	55.25
+```math
+\bar{R}_t < h
+```
 
-The rising premature-alarm rate highlights the limitations of fixed, unnormalized thresholds when volatility changes.
-Experiment 09 — Volatility-normalized CUSUM baseline
+where $h$ is the detection threshold.
 
-Using known simulated volatility for normalization, this exploratory baseline produced 12.6% premature alarms at each volatility level, with successful detection rates of 87.4%, 87.2%, 61.0%, and 40.2% as volatility increased. These thresholds were not yet independently calibrated to a common false-alarm target, so the results should not be used as a definitive detector ranking.
-Experiment 10 — Calibrated normalized CUSUM with known volatility
+The original experiment used $h = 0$. Later experiments calibrated the threshold using simulated no-change sequences.
 
-The calibrated normalized threshold was 27.394951. Independent no-change false-alarm proportions were 6.8% at each tested volatility. Regime-change outcomes were:
-Volatility	Premature alarms	Successful detections	Missed detections	Conditional delay
-0.005	2.8%	97.2%	0.0%	77.80
-0.010	2.8%	93.8%	3.4%	195.42
-0.020	2.8%	41.8%	55.4%	262.39
-0.030	2.8%	24.6%	72.6%	267.41
+### 4.2 Downward CUSUM Detector
 
-This is an oracle benchmark because it uses true simulator volatility, unavailable to a real deployment.
-Experiment 11 — Historical volatility estimation
+The downward cumulative sum is defined as:
 
-A causal rolling sample-standard-deviation estimator was implemented and tested. For [0.01, 0.02, 0.03, 0.04, 0.05] with window 3, the estimated series is [NaN, NaN, NaN, 0.01, 0.01]. Tests cover numeric values, no future-data dependence, invalid inputs, and zero-variance windows.
-Experiment 12 — Adaptive CUSUM floor and threshold calibration
+```math
+S_t =
+\max\left(
+0,\,
+S_{t-1}+\mu_0-R_t-\delta
+\right)
+```
 
-Three volatility floors (0.000001, 0.0005, and 0.001) were separately calibrated using 1,000 no-change simulations. Each yielded threshold 28.233946 at the displayed precision. On 500 independent no-change sequences per volatility, each candidate produced 31/500 = 6.2% false alarms at all four volatility levels.
+with initial condition:
 
-All three floors produced the same reported regime-change results under these Gaussian settings:
-Volatility	Premature alarms	Successful detections	Missed detections	Conditional delay
-0.005	2.0%	98.0%	0.0%	78.75
-0.010	2.0%	94.6%	3.4%	193.98
-0.020	2.0%	43.6%	54.4%	267.10
-0.030	2.0%	24.0%	74.0%	263.78
+```math
+S_{-1}=0
+```
 
-The floor candidates were indistinguishable in these tests; this does not establish equivalence under near-zero or time-varying volatility.
-Experiment 13 — Controlled oracle-versus-adaptive CUSUM comparison
+where:
 
-Both detectors were calibrated using 1,000 no-change sequences separately for each volatility, then evaluated on the same independent seeded sequences. The original oracle used raw-return CUSUM with allowance 0.1σ0.1σ; adaptive CUSUM used historical volatility (window 50), allowance 0.1, and minimum volatility 0.001.
-Volatility	Oracle threshold	Adaptive threshold
-0.005	0.136975	28.233946
-0.010	0.273950	28.233946
-0.020	0.547899	28.233946
-0.030	0.821849	28.233946
+- $S_t$ is the cumulative detection statistic.
+- $S_{t-1}$ is the previous cumulative statistic.
+- $\mu_0$ is the target expected return.
+- $R_t$ is the observed return.
+- $\delta$ is the allowance parameter.
 
-Across 500 independent no-change simulations at each volatility, the oracle had 6.8% false alarms and adaptive CUSUM 6.2%. Results at different volatilities reuse the same random seeds and are not independent confirmations.
-Volatility	Oracle success	Adaptive success	Oracle delay	Adaptive delay
-0.005	97.2%	98.0%	77.80	78.75
-0.010	93.8%	94.6%	195.42	193.98
-0.020	41.8%	43.6%	262.39	267.10
-0.030	24.6%	24.0%	267.41	263.78
+An alarm occurs when:
 
-The oracle had 2.8% premature alarms at each volatility; adaptive CUSUM had 2.0%. The adaptive detector matched the oracle broadly under these specific synthetic conditions, with small mixed differences. No confidence intervals or paired significance tests have yet established a statistically significant improvement. Conditional delays compare different subsets of detected simulations and should not be interpreted alone.
-6. Key Findings
+```math
+S_t > h
+```
 
-    The uncalibrated rolling-mean detector generated excessive false alarms in these simulations.
-    Calibrating thresholds using independent no-change sequences greatly improved false-alarm control.
-    CUSUM substantially outperformed the calibrated rolling-mean baseline in the baseline scenario, but this does not establish universal superiority.
-    Fixed raw-return thresholds became unreliable when volatility increased.
-    Historical volatility normalization made the adaptive detector's calibrated threshold largely invariant across the tested Gaussian scales.
-    Adaptive CUSUM achieved broadly comparable simulated detection performance to a true-volatility oracle; superiority is not established.
-    Both approaches struggled to detect the same small mean deterioration as volatility increased.
+where $h$ is the calibrated alarm threshold.
 
-7. Repository Structure
+### 4.3 Historical Volatility Estimation
+
+EDGEGUARD estimates volatility using previously observed returns.
+
+The rolling sample standard deviation is:
+
+```math
+\hat{\sigma}_t =
+\sqrt{
+\frac{1}{w-1}
+\sum_{i=t-w}^{t-1}
+(R_i-\bar{R}_{t-1})^2
+}
+```
+
+where:
+
+```math
+\bar{R}_{t-1} =
+\frac{1}{w}
+\sum_{i=t-w}^{t-1}R_i
+```
+
+and:
+
+- $\hat{\sigma}_t$ is the estimated volatility at time $t$.
+- $w$ is the historical estimation window.
+- $\bar{R}_{t-1}$ is the mean of the preceding $w$ returns.
+
+Only returns observed before time $t$ are used to estimate volatility for time $t$.
+
+This avoids look-ahead bias in the volatility estimator.
+
+### 4.4 Adaptive CUSUM Detector
+
+Adaptive CUSUM normalizes return deviations using estimated historical volatility:
+
+```math
+A_t =
+\max\left(
+0,\,
+A_{t-1}
++
+\frac{\mu_0-R_t}
+{\max(\hat{\sigma}_t,\sigma_{\min})}
+-k
+\right)
+```
+
+where:
+
+- $A_t$ is the adaptive CUSUM statistic.
+- $A_{t-1}$ is the previous cumulative statistic.
+- $\mu_0$ is the target expected return.
+- $R_t$ is the observed return.
+- $\hat{\sigma}_t$ is the historical volatility estimate.
+- $\sigma_{\min}$ is the minimum permitted volatility.
+- $k$ is the standardized allowance.
+
+The effective volatility is:
+
+```math
+\sigma_{\text{effective},t}
+=
+\max(\hat{\sigma}_t,\sigma_{\min})
+```
+
+The volatility floor prevents division by zero and limits excessive amplification of small return deviations.
+
+An alarm occurs when:
+
+```math
+A_t > h
+```
+
+where $h$ is the calibrated detection threshold.
+
+## 5. Evaluation Methodology
+
+### 5.1 Monte Carlo Simulations
+
+Experiments use seeded synthetic Gaussian return sequences.
+
+Different random seeds are used for calibration and independent evaluation.
+
+The same independent test sequences are reused across detectors when performing paired comparisons.
+
+### 5.2 Alarm Classification
+
+The first alarm is classified as:
+
+- **Premature alarm:** The first alarm occurs before the true regime-change point.
+- **Successful detection:** The first alarm occurs at or after the regime-change point.
+- **Missed detection:** No alarm occurs before the simulation ends.
+
+Each simulation contributes to exactly one of these categories.
+
+### 5.3 False-Alarm Probability
+
+The empirical false-alarm probability is:
+
+```math
+\widehat{P}_{FA}
+=
+\frac{N_{FA}}{N_{\text{sim}}}
+```
+
+where:
+
+- $N_{FA}$ is the number of simulations containing a false alarm.
+- $N_{\text{sim}}$ is the total number of simulations.
+
+### 5.4 Detection Delay
+
+Detection delay is calculated as:
+
+```math
+D = t_{\text{alarm}}-\tau
+```
+
+where:
+
+- $D$ is the detection delay.
+- $t_{\text{alarm}}$ is the first alarm time.
+- $\tau$ is the true regime-change point.
+
+Average detection delay is calculated only among successful detections.
+
+### 5.5 Threshold Calibration
+
+Thresholds are selected from maximum detector statistics observed on no-change calibration simulations.
+
+For a target false-alarm probability of $\alpha = 0.05$:
+
+```math
+h =
+Q_{1-\alpha}
+(M_1,\ldots,M_n)
+```
+
+where:
+
+- $h$ is the calibrated threshold.
+- $Q_{1-\alpha}$ is the empirical quantile.
+- $M_i$ is the maximum detector statistic in calibration simulation $i$.
+- $\alpha$ is the target false-alarm probability.
+
+The resulting threshold is then evaluated on independent simulations.
+
+## 6. Experimental Results
+
+### 6.1 Experiments 01–07: Statistical Foundations
+
+| Experiment | Main finding |
+|---|---|
+| 01 | Simulated deterioration from positive to negative expected returns |
+| 02 | Zero-threshold rolling mean produced 99.6% premature alarms |
+| 03 | Larger rolling windows reduced premature alarms |
+| 04 | No-change experiments exposed excessive false alarms |
+| 05 | Stronger thresholds reduced false alarms but increased missed detections |
+| 06 | Calibrated rolling mean achieved 59.6% successful detections |
+| 07 | Calibrated CUSUM achieved 93.8% successful detections |
+
+#### Experiment 06: Rolling-Mean Calibration
+
+| Metric | Result |
+|---|---:|
+| Calibrated threshold | -0.003852 |
+| No-change false-alarm proportion | 6.6% |
+| Premature alarms | 3.8% |
+| Successful detections | 59.6% |
+| Missed detections | 36.6% |
+| Average detection delay | 213.17 |
+
+#### Experiment 07: CUSUM Calibration
+
+| Metric | Result |
+|---|---:|
+| Calibrated threshold | 0.273950 |
+| No-change false-alarm proportion | 6.8% |
+| Premature alarms | 2.8% |
+| Successful detections | 93.8% |
+| Missed detections | 3.4% |
+| Average detection delay | 195.42 |
+
+These results motivated further investigation of sequential detection methods.
+
+### 6.2 Experiment 08: Volatility Robustness
+
+Rolling-mean and CUSUM detectors were evaluated under four volatility conditions:
+
+```math
+\sigma \in
+\{0.005,\ 0.010,\ 0.020,\ 0.030\}
+```
+
+Both fixed-threshold methods experienced substantial performance deterioration under increased volatility.
+
+This motivated investigating volatility-normalized detection methods.
+
+### 6.3 Experiment 09: Volatility-Normalized CUSUM
+
+The experiment normalized return deviations using known simulated volatility.
+
+| Volatility | Successful detections |
+|---|---:|
+| 0.005 | 87.4% |
+| 0.010 | 87.2% |
+| 0.020 | 61.0% |
+| 0.030 | 40.2% |
+
+Premature alarms were 12.6% across all four conditions.
+
+This experiment used true simulated volatility and therefore represents an oracle-style benchmark rather than a directly deployable detector.
+
+### 6.4 Experiment 10: Normalized CUSUM Calibration
+
+The normalized CUSUM detector was calibrated using no-change simulations.
+
+| Metric | Result |
+|---|---:|
+| Calibrated threshold | 27.394951 |
+| Independent no-change false-alarm proportion | 6.8% |
+
+The identical rates across volatility conditions were consistent with the Gaussian scaling assumptions and reuse of standardized random sequences.
+
+### 6.5 Experiment 11: Historical Volatility Estimation
+
+Implemented a causal rolling sample-standard-deviation estimator.
+
+Automated tests verify:
+
+- Correct calculations
+- No future-information leakage
+- Invalid input handling
+- Zero-variance behavior
+
+The estimator was integrated into EDGEGUARD's reusable source code.
+
+### 6.6 Experiment 12: Adaptive CUSUM Calibration
+
+Three volatility floors were evaluated.
+
+| Volatility floor | Calibrated threshold | False-alarm proportion |
+|---|---:|---:|
+| 0.000001 | 28.233946 | 6.2% |
+| 0.000500 | 28.233946 | 6.2% |
+| 0.001000 | 28.233946 | 6.2% |
+
+All three volatility floors produced identical results under the tested conditions.
+
+This does not establish which floor is optimal.
+
+#### Adaptive CUSUM Detection Performance
+
+| Volatility | Successful detections | Missed detections | Average delay |
+|---|---:|---:|---:|
+| 0.005 | 98.0% | 0.0% | 78.75 |
+| 0.010 | 94.6% | 3.4% | 193.98 |
+| 0.020 | 43.6% | 54.4% | 267.10 |
+| 0.030 | 24.0% | 74.0% | 263.78 |
+
+Premature alarms were 2.0% across all four conditions.
+
+### 6.7 Experiment 13: Original vs Adaptive CUSUM
+
+The final Phase 2 experiment compared:
+
+1. Original CUSUM using true simulated volatility to scale its allowance.
+2. Adaptive CUSUM using causal historical volatility estimates.
+
+Both detectors were calibrated separately and evaluated on identical independent test sequences.
+
+#### Calibrated Thresholds
+
+| Volatility | Original CUSUM | Adaptive CUSUM |
+|---|---:|---:|
+| 0.005 | 0.136975 | 28.233946 |
+| 0.010 | 0.273950 | 28.233946 |
+| 0.020 | 0.547899 | 28.233946 |
+| 0.030 | 0.821849 | 28.233946 |
+
+The original CUSUM threshold scales with volatility because the statistic is measured in raw return units.
+
+The adaptive threshold remains constant in these experiments because the statistic uses volatility-normalized deviations.
+
+#### Independent False-Alarm Comparison
+
+| Volatility | Original CUSUM | Adaptive CUSUM |
+|---|---:|---:|
+| 0.005 | 6.8% | 6.2% |
+| 0.010 | 6.8% | 6.2% |
+| 0.020 | 6.8% | 6.2% |
+| 0.030 | 6.8% | 6.2% |
+
+The adaptive detector generated 31 false alarms out of 500 independent no-change simulations, compared with 34 for the original detector.
+
+This difference is small and does not establish statistical superiority.
+
+#### Successful Detection Comparison
+
+| Volatility | Original CUSUM | Adaptive CUSUM |
+|---|---:|---:|
+| 0.005 | 97.2% | 98.0% |
+| 0.010 | 93.8% | 94.6% |
+| 0.020 | 41.8% | 43.6% |
+| 0.030 | 24.6% | 24.0% |
+
+#### Missed Detection Comparison
+
+| Volatility | Original CUSUM | Adaptive CUSUM |
+|---|---:|---:|
+| 0.005 | 0.0% | 0.0% |
+| 0.010 | 3.4% | 3.4% |
+| 0.020 | 55.4% | 54.4% |
+| 0.030 | 72.6% | 74.0% |
+
+#### Conditional Average Detection Delays
+
+| Volatility | Original CUSUM | Adaptive CUSUM |
+|---|---:|---:|
+| 0.005 | 77.80 | 78.75 |
+| 0.010 | 195.42 | 193.98 |
+| 0.020 | 262.39 | 267.10 |
+| 0.030 | 267.41 | 263.78 |
+
+### 6.8 Interpretation of Final Results
+
+Adaptive CUSUM achieved broadly comparable performance to an oracle benchmark that knows the true simulated volatility.
+
+The adaptive detector achieved slightly higher successful-detection rates at three volatility levels and slightly lower performance at the highest volatility level.
+
+However, the observed differences were small.
+
+Confidence intervals and paired statistical tests have not yet established statistically significant superiority.
+
+Detection became substantially harder as volatility increased relative to the fixed change in expected return.
+
+The results support further investigation of causal volatility normalization but do not demonstrate that adaptive CUSUM is universally superior.
+
+## 7. Repository Structure
+
+```text
 EDGEGUARD/
 ├── .vscode/
 │   └── settings.json
@@ -192,93 +500,130 @@ EDGEGUARD/
 │   └── test_volatility.py
 ├── experiments/
 │   ├── experiment_01.py
-│   ├── ...
+│   ├── experiment_02.py
+│   ├── experiment_03.py
+│   ├── experiment_04.py
+│   ├── experiment_05.py
+│   ├── experiment_06.py
+│   ├── experiment_07.py
+│   ├── experiment_08.py
+│   ├── experiment_09.py
+│   ├── experiment_10.py
+│   ├── experiment_11.py
+│   ├── experiment_12.py
 │   └── experiment_13.py
 ├── results/
 │   └── experiment_01.png
 ├── requirements.txt
 ├── .gitignore
 └── README.md
-8. Installation and Reproducibility
+```
 
-Requires Python 3, NumPy, Matplotlib, and pytest. The latest local test run used Python 3.14.7.
+## 8. Installation and Reproducibility
+
+### 8.1 Clone the Repository
+
+```bash
 git clone https://github.com/annalii0810/EDGEGUARD.git
 cd EDGEGUARD
+```
+
+### 8.2 Create a Virtual Environment
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+### 8.3 Install Dependencies
+
+```bash
 python -m pip install -r requirements.txt
+```
 
-Run all automated tests:
+### 8.4 Run Automated Tests
+
+```bash
 PYTHONPATH=src python -m pytest -v
+```
 
-Latest observed local result: 25 passed. This documents the local test run; rerun the command to verify any new checkout.
+The latest complete test run passed all 25 automated tests.
 
-Run the research experiments:
-PYTHONPATH=src python experiments/experiment_01.py
-PYTHONPATH=src python experiments/experiment_07.py
-PYTHONPATH=src python experiments/experiment_08.py
-PYTHONPATH=src python experiments/experiment_09.py
-PYTHONPATH=src python experiments/experiment_10.py
-PYTHONPATH=src python experiments/experiment_11.py
-PYTHONPATH=src python experiments/experiment_12.py
+### 8.5 Run Experiments
+
+For example:
+
+```bash
 PYTHONPATH=src python experiments/experiment_13.py
+```
 
-Experiments 02–06 can be run analogously. Some calibration and evaluation scripts run thousands of simulations and take longer than unit tests. All results reported above were obtained from seeded synthetic simulations.
-9. Limitations and Research Integrity
+Other experiments can be executed by replacing the experiment filename.
 
-    Returns are independent Gaussian draws, not realistic market microstructure or heavy-tailed, autocorrelated financial returns.
-    Several experiments use true simulator parameters; those configurations are oracle benchmarks, not deployable systems.
-    Per-volatility calibration in Experiment 13 assumes a known test volatility level when selecting the oracle threshold and adaptive threshold. This should not be confused with one globally deployable adaptive policy.
-    The observed false-alarm percentages are finite-simulation estimates, not guaranteed levels.
-    Different volatility conditions reuse random seeds; they are paired comparisons, not independent replications.
-    The study lacks formal confidence intervals, paired statistical tests, sensitivity analyses over multiple independent evaluation sets, and adversarial distribution-shift experiments.
-    The minimum volatility floor may amplify tiny deviations during near-constant returns; its safety has not been established across realistic regimes.
-    Detection delays are conditional on successful detections and may be subject to selection effects.
-    Historical market validation, transaction costs, slippage, execution latency, and real portfolio impact remain untested.
-    Results do not establish live profitability, production readiness, or a novel statistical method.
+The experiments use seeded random-number generation to support reproducibility.
 
-10. Research Roadmap
-Phase 1 — Statistical foundations
+## 9. Research Limitations
 
-    Synthetic return generator and reproducibility
-    Rolling-mean and original CUSUM baselines
-    Initial unit tests and threshold calibration
-    Initial synthetic benchmarking
+The current project has several important limitations.
 
-Phase 2 — Adaptive statistical detection (implementation and initial evaluation)
+- Returns are synthetic, independent, and Gaussian.
+- Expected returns and volatility are specified by the simulator.
+- The original CUSUM oracle benchmark uses true simulated volatility.
+- Some volatility comparisons reuse standardized random sequences.
+- Only a limited set of regime-change scenarios has been tested.
+- Detection delay is conditional on successful detection.
+- Confidence intervals and formal paired statistical tests remain future work.
+- Volatility floors and detector parameters are not proven optimal.
+- Autocorrelation, heavy tails, and volatility clustering have not yet been evaluated.
+- Historical market data and live execution are not included.
+- Transaction costs, slippage, and real-world profitability have not been established.
 
-    Evaluate several fixed-volatility scenarios
-    Implement volatility-normalized CUSUM
-    Implement causal historical volatility estimation
-    Implement adaptive CUSUM and numerical safeguards
-    Calibrate thresholds on separate no-change sequences
-    Compare adaptive and oracle detectors on independent synthetic sequences
-    Run 25 automated tests
-    Extend to gradual changes, autocorrelation, heavy tails, and time-varying volatility
-    Add confidence intervals, paired statistical tests, and repeated independent evaluations
-    Investigate low-volatility safeguards under broader validation scenarios
+The results should be interpreted as controlled simulation findings, not evidence of profitable live trading.
 
-Phase 3 — Adaptive risk controller
+## 10. Research Roadmap
 
-    Translate alarms into exposure-reduction and pause decisions
-    Quantify costs of false alarms, delayed detection, and missed deterioration
-    Compare risk-control policies using controlled simulations
-    Evaluate risk-adjusted outcomes and policy stability
+### Phase 1 — Statistical Foundations
 
-Phase 4 — Historical validation
+- [x] Synthetic return simulator
+- [x] Rolling-mean detector
+- [x] Original CUSUM detector
+- [x] Initial calibration and benchmarking
 
-    Integrate historical return data
-    Use chronological out-of-sample evaluation
-    Model transaction costs and slippage
-    Study regime shifts and distributional instability
+### Phase 2 — Adaptive Statistical Detection
 
-Phase 5 — Research portfolio
+- [x] Volatility robustness experiments
+- [x] Historical volatility estimator
+- [x] Adaptive CUSUM detector
+- [x] Automated tests
+- [x] Independent calibration and evaluation
+- [x] Original versus adaptive CUSUM comparison
 
-    Produce publication-quality figures and a technical report
-    Build an interactive research dashboard
-    Document failure cases and reproducibility details
-    Prepare evidence-based resume descriptions
+### Phase 3 — Adaptive Risk Controller
 
-11. Research Integrity Statement
+- [ ] Implement simulated exposure-reduction decisions
+- [ ] Compare monitored and unmonitored strategies
+- [ ] Model false-alarm and delayed-detection costs
+- [ ] Evaluate drawdown, turnover, and risk-adjusted returns
 
-EDGEGUARD is an educational quantitative research project. Its currently reported findings arise from controlled synthetic simulations. The work investigates established sequential monitoring methods and does not claim profitable live trading, statistically proven superiority, or a novel algorithm. Its longer-term objective is to evaluate whether carefully calibrated monitoring can support more reliable trading risk-control decisions.
+### Phase 4 — Historical Validation
+
+- [ ] Integrate historical market data
+- [ ] Use chronological out-of-sample evaluation
+- [ ] Model transaction costs and slippage
+- [ ] Test robustness under realistic market conditions
+
+### Phase 5 — Research Portfolio
+
+- [ ] Produce publication-quality figures
+- [ ] Build a research dashboard
+- [ ] Prepare a formal technical report
+- [ ] Document limitations and failure cases
+
+## 11. Research Integrity
+
+EDGEGUARD is an educational quantitative research project.
+
+All reported experimental results are derived from synthetic simulations.
+
+The project does not demonstrate profitable live trading, establish statistically significant superiority of adaptive CUSUM, or claim the invention of a novel change-detection algorithm.
+
+Its longer-term objective is to evaluate whether carefully calibrated statistical monitoring can support more reliable simulated trading risk-control decisions.
