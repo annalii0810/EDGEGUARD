@@ -627,3 +627,132 @@ All reported experimental results are derived from synthetic simulations.
 The project does not demonstrate profitable live trading, establish statistically significant superiority of adaptive CUSUM, or claim the invention of a novel change-detection algorithm.
 
 Its longer-term objective is to evaluate whether carefully calibrated statistical monitoring can support more reliable simulated trading risk-control decisions.
+
+## Phase 3 — Adaptive Risk Controller
+
+### Overview
+
+Phase 3 investigates whether statistical deterioration
+signals can improve simulated trading risk management.
+
+EDGEGUARD combines a volatility-normalized adaptive
+CUSUM detector with an exposure-reduction controller.
+
+When deterioration is detected, the controller reduces
+strategy exposure beginning with the next observation,
+avoiding same-period look-ahead bias.
+
+### Implemented Components
+
+- Adaptive risk controller (`risk_controller.py`)
+- Transaction-cost model (`transaction_costs.py`)
+- Commission and slippage sensitivity analysis
+- Monte Carlo performance evaluation
+- False-alarm economic cost analysis
+- Exposure-policy comparison
+- Robustness testing
+- Bootstrap confidence intervals
+
+### Experiments
+
+| Experiment | Description |
+|---|---|
+| 14 | Risk-controller baseline evaluation |
+| 15 | Adaptive CUSUM integration |
+| 16 | Monte Carlo risk-controller evaluation |
+| 17 | False-alarm economic cost |
+| 18 | Exposure-reduction policy comparison |
+| 19 | Transaction-cost sensitivity |
+| 20 | Robustness across simulated market conditions |
+| 21 | Bootstrap confidence intervals |
+
+### Main Findings
+
+**Experiment 16 — Monte Carlo Evaluation**
+
+Across 500 synthetic deterioration paths:
+
+- Average return improvement: +22.42 percentage points
+- Average drawdown reduction: 14.49 percentage points
+- Return improved on 89.0% of paths
+- Drawdown reduced on 92.6% of paths
+
+**Experiment 17 — False-Alarm Costs**
+
+Across 500 no-change simulations:
+
+- Average return difference: -1.78 percentage points
+- Average drawdown reduction: 0.12 percentage points
+- Average conditional return difference following
+  false alarms: -42.33 percentage points
+
+These results illustrate the opportunity cost of
+unnecessary exposure reductions.
+
+**Experiment 19 — Transaction Costs**
+
+Three proportional-cost scenarios were evaluated:
+
+- Low: 2 basis points
+- Medium: 10 basis points
+- High: 30 basis points
+
+The modeled costs had relatively small effects because
+the controller makes at most one exposure reduction.
+
+**Experiment 20 — Robustness**
+
+The controller was evaluated across 36 combinations
+of volatility, deterioration magnitude, and change point,
+using 3,600 simulated paths.
+
+Detection reliability decreased substantially under
+higher volatility and weaker deterioration.
+
+Some scenarios produced negative average return
+improvements.
+
+**Experiment 21 — Statistical Confidence Intervals**
+
+Across 500 independent synthetic deterioration paths
+and 2,000 bootstrap resamples:
+
+| Metric | Mean improvement | 95% bootstrap CI |
+|---|---:|---|
+| Total return | +22.79 pp | [+21.46, +24.19] pp |
+| Maximum drawdown reduction | +14.63 pp | [+13.96, +15.30] pp |
+
+These intervals quantify simulation uncertainty under
+the specified model. They do not establish real-market
+profitability or account for all model-selection uncertainty.
+
+### Limitations
+
+- Returns are generated using simplified Gaussian models.
+- The simulations do not represent historical market data.
+- Transaction costs use a simplified proportional model.
+- Financing, nonlinear market impact, and portfolio-weight
+  drift are not modeled.
+- The exposure policy is not statistically proven optimal.
+- Performance depends on the assumed deterioration regime.
+- Real-world trading effectiveness remains unverified.
+
+### Verification
+
+The complete automated test suite passed 38 tests.
+
+Python syntax checks completed successfully.
+
+### Conclusion
+
+Phase 3 demonstrates that adaptive exposure reduction
+can improve simulated outcomes when trading strategy
+profitability deteriorates.
+
+However, unnecessary alarms can sacrifice profits,
+and detection reliability declines under difficult
+market conditions.
+
+Further validation using historical data, realistic
+execution assumptions, and independent out-of-sample
+testing is necessary.
