@@ -1,758 +1,894 @@
 
 # EDGEGUARD
 
-## Sequential Statistical Monitoring for Quantitative Trading Strategies
+## Adaptive Change-Point Detection for Quantitative Trading Risk Management
 
-*A reproducible Python research project investigating how sequential change-detection methods identify deterioration in simulated trading strategy profitability.*
+**Independent Quantitative Research | Python | Statistics | Risk Management**
 
-## 1. Project Overview
+EDGEGUARD is a reproducible Python research project investigating whether sequential change-point detection can identify deterioration in quantitative trading strategies and improve risk management through dynamic exposure reduction.
 
-Quantitative trading strategies can lose their statistical advantage as market conditions change. Temporary losses do not necessarily mean that a strategy has deteriorated, while a deteriorating strategy may still occasionally produce positive returns.
+The project combines adaptive CUSUM detection, causal volatility estimation, Monte Carlo simulation, historical backtesting, and statistical evaluation.
 
-EDGEGUARD investigates the trade-offs among false alarms, successful detection, missed changes, and detection delay.
+**Project Status:** Five research phases implemented, Experiments 01–41 completed, and 99 automated tests passing.
 
-The project implements:
+**Research Conclusion:** EDGEGUARD demonstrated substantial risk-reduction benefits under selected synthetic deterioration scenarios but produced no improvement in its frozen historical out-of-sample evaluation.
 
-- Rolling-mean monitoring
-- Downward cumulative sum (CUSUM) detection
-- Historical volatility estimation
-- Volatility-normalized adaptive CUSUM
-- Independent calibration and evaluation
-- Reproducible Monte Carlo simulations
+The project does not claim profitable live trading or general superiority over conventional statistical detectors.
 
-**Current status:** Experiments 01–13 completed, with 25 automated tests passing in the latest full test run. Phase 2 implementation and baseline comparisons are complete. Broader robustness validation remains future work.
+---
 
-## 2. Research Question
+## 1. Research Overview
 
-Can sequential statistical change-detection methods identify deterioration in a quantitative trading strategy's expected return while controlling false alarms and minimizing detection delay?
+Quantitative trading strategies may deteriorate when market conditions change or previously effective statistical relationships weaken.
 
-A related question is whether estimating volatility causally from historical returns can provide performance comparable to a detector that knows the true simulated volatility.
+A risk-monitoring system must balance two competing objectives:
+
+1. Detect genuine deterioration quickly.
+2. Avoid false alarms that unnecessarily reduce profitable trading exposure.
+
+EDGEGUARD investigates the relationship between statistical detection, volatility estimation, detection delay, and economic risk management.
+
+### Research Questions
+
+- Can adaptive CUSUM detect persistent deterioration?
+- Does reducing exposure after detection improve performance?
+- How does EDGEGUARD compare against conventional detectors?
+- How does volatility affect detection reliability?
+- Under what conditions does risk reduction become economically beneficial?
+
+### Technical Components
+
+- Rolling-mean detection
+- Conventional CUSUM
+- Adaptive CUSUM
+- Causal volatility estimation
+- Exposure-aware risk monitoring
+- Dynamic exposure reduction
+- Transaction-cost-aware backtesting
+- Monte Carlo simulations
+- Threshold calibration
+- Bootstrap confidence intervals
+- Automated testing
+
+---
+
+## 2. Key Research Findings
+
+### 2.1 Historical Out-of-Sample Evaluation
+
+The frozen historical evaluation covered January 2023 through October 2026.
+
+| Asset | Baseline Return | EDGEGUARD Return | Alarm |
+|---|---:|---:|---|
+| SPY | +56.38% | +56.38% | None |
+| QQQ | +83.96% | +83.96% | None |
+| IWM | +30.32% | +30.32% | None |
+| TLT | -21.64% | -21.64% | None |
+
+No detector alarms occurred.
+
+Therefore, EDGEGUARD produced no measured improvement in returns, drawdowns, or Sharpe ratios.
+
+### 2.2 Synthetic Deterioration Detection
+
+Under severe, persistent simulated deterioration:
+
+| Metric | Result |
+|---|---:|
+| Post-change detection rate | 98.6% |
+| False-alarm rate | 3.2% |
+| Premature-alarm rate | 1.4% |
+| Average detection delay | Approximately 59.6 observations |
+
+These results depend on the specified synthetic assumptions.
+
+### 2.3 Synthetic Risk-Control Performance
+
+| Metric | Baseline | EDGEGUARD |
+|---|---:|---:|
+| Mean total return | -50.15% | -23.05% |
+| Mean maximum drawdown | 56.19% | 32.10% |
+| Mean Sharpe ratio | -3.006 | -1.432 |
+
+EDGEGUARD achieved:
+
+- Mean return improvement: +27.09 percentage points.
+- Mean drawdown reduction: 24.09 percentage points.
+
+Paired bootstrap confidence intervals:
+
+| Metric | 95% Confidence Interval |
+|---|---|
+| Return improvement | +26.70 to +27.49 pp |
+| Drawdown reduction | +23.80 to +24.40 pp |
+
+These results describe controlled simulations, not real-market profitability.
+
+### 2.4 Conventional Detector Comparison
+
+| Detector | Detection Within 50 Observations | Within 100 Observations |
+|---|---:|---:|
+| EDGEGUARD | 39.0% | 93.1% |
+| Rolling Mean | 59.0% | 88.2% |
+| Standard CUSUM | 44.0% | 94.2% |
+
+EDGEGUARD did not consistently outperform conventional detection methods.
+
+In a separate synthetic economic comparison, Standard CUSUM slightly outperformed EDGEGUARD.
+
+### 2.5 Volatility Misspecification
+
+| Assumed / True Volatility | Standard CUSUM False-Alarm Rate |
+|---|---:|
+| 0.50 | 85.8% |
+| 0.75 | 28.8% |
+| 1.00 | 5.6% |
+| 1.25 | 0.8% |
+| 1.50 | 0.0% |
+| 2.00 | 0.0% |
+
+EDGEGUARD produced a 4.8% false-alarm rate under the fixed simulated volatility.
+
+This demonstrates sensitivity to volatility misspecification in the fixed-volatility baseline, not general superiority of EDGEGUARD.
+
+---
 
 ## 3. Mathematical Framework
 
 ### 3.1 Synthetic Return Model
 
-Strategy returns are modeled as:
+Synthetic returns follow:
 
-```math
+$$
 R_t = \mu_t + \sigma Z_t
-```
+$$
 
 where:
 
-- $R_t$ is the simulated strategy return at time $t$.
-- $\mu_t$ is the expected return at time $t$.
-- $\sigma$ is the return volatility.
-- $Z_t$ is independent standard normal noise.
+- $R_t$ is the simulated return.
+- $\mu_t$ is expected return.
+- $\sigma$ is volatility.
+- $Z_t$ is standard normal noise.
 
-The noise follows:
-
-```math
+$$
 Z_t \sim \mathcal{N}(0,1)
-```
+$$
 
-### 3.2 Regime-Change Model
+### 3.2 Regime Deterioration
 
-The expected return changes according to:
+Expected return changes at observation $\tau$:
 
-```math
+$$
 \mu_t =
 \begin{cases}
-0.001, & t < 500 \\
--0.001, & t \ge 500
+\mu_0, & t < \tau \\
+\mu_1, & t \geq \tau
 \end{cases}
-```
+$$
 
 where:
 
-- $\mu_t$ is the expected return at time $t$.
-- $\tau = 500$ is the simulated change point.
-- $\mu_{\text{before}} = 0.001$ is the expected return before deterioration.
-- $\mu_{\text{after}} = -0.001$ is the expected return after deterioration.
+- $\mu_0$ is the original expected return.
+- $\mu_1$ is the deteriorated expected return.
+- $\tau$ is the change point.
+
+Phase 5 reference simulation:
 
 | Parameter | Value |
 |---|---:|
-| Observations per simulation | 1,000 |
-| Change point ($\tau$) | 500 |
-| Expected return before change | +0.10% |
-| Expected return after change | -0.10% |
-| Baseline volatility ($\sigma$) | 1.00% |
+| Observations | 500 |
+| Change point | 250 |
+| Reference mean | 0.0002299069244105812 |
+| Deteriorated mean | -0.003 |
+| Volatility | 0.00715 |
 
-These are simplified synthetic assumptions rather than a realistic model of live trading profitability.
-
-## 4. Statistical Detection Algorithms
-
-### 4.1 Rolling-Mean Detector
+### 3.3 Rolling-Mean Detector
 
 The rolling mean is:
 
-```math
+$$
 \bar{R}_t =
 \frac{1}{w}
-\sum_{i=t-w+1}^{t} R_i
-```
+\sum_{i=t-w+1}^{t}R_i
+$$
 
-where:
+The standardized detection statistic is:
 
-- $\bar{R}_t$ is the rolling average return.
-- $w$ is the rolling-window size.
-- $R_i$ is the observed return at time $i$.
+$$
+M_t =
+\max\left(
+0,
+\frac{
+\sqrt{w}(\mu_0-\bar{R}_t)
+}{
+\sigma_{\mathrm{ref}}
+}
+\right)
+$$
 
 An alarm occurs when:
 
-```math
-\bar{R}_t < h
-```
+$$
+M_t > h_M
+$$
 
-where $h$ is the detection threshold.
+The current observation contributes to the statistic.
 
-The original experiment used $h = 0$. Later experiments calibrated the threshold using simulated no-change sequences.
+Therefore, any resulting trading action must occur no earlier than the next observation.
 
-### 4.2 Downward CUSUM Detector
+### 3.4 Conventional CUSUM
 
-The downward cumulative sum is defined as:
+The downward CUSUM statistic is:
 
-```math
+$$
 S_t =
 \max\left(
-0,\,
+0,
 S_{t-1}+\mu_0-R_t-\delta
 \right)
-```
-
-with initial condition:
-
-```math
-S_{-1}=0
-```
+$$
 
 where:
 
-- $S_t$ is the cumulative detection statistic.
-- $S_{t-1}$ is the previous cumulative statistic.
-- $\mu_0$ is the target expected return.
-- $R_t$ is the observed return.
-- $\delta$ is the allowance parameter.
+- $S_t$ is the accumulated statistic.
+- $\mu_0$ is the reference mean.
+- $\delta$ is the allowance.
 
 An alarm occurs when:
 
-```math
-S_t > h
-```
+$$
+S_t > h_S
+$$
 
-where $h$ is the calibrated alarm threshold.
+### 3.5 Standardized CUSUM
 
-### 4.3 Historical Volatility Estimation
+The standardized CUSUM baseline uses:
 
-EDGEGUARD estimates volatility using previously observed returns.
+$$
+C_t =
+\max\left(
+0,
+C_{t-1}
++
+\frac{\mu_0-R_t}{\sigma_{\mathrm{ref}}}
+-k
+\right)
+$$
 
-The rolling sample standard deviation is:
+where:
 
-```math
-\hat{\sigma}_t =
+- $\sigma_{\mathrm{ref}}$ is fixed reference volatility.
+- $k$ is the standardized allowance.
+
+An alarm occurs when:
+
+$$
+C_t > h_C
+$$
+
+### 3.6 Causal Volatility Estimation
+
+The rolling historical mean is:
+
+$$
+\bar{R}_{t-1}^{(w)}
+=
+\frac{1}{w}
+\sum_{i=t-w}^{t-1}R_i
+$$
+
+The sample volatility estimate is:
+
+$$
+\hat{\sigma}_t
+=
 \sqrt{
 \frac{1}{w-1}
 \sum_{i=t-w}^{t-1}
-(R_i-\bar{R}_{t-1})^2
+\left(
+R_i-\bar{R}_{t-1}^{(w)}
+\right)^2
 }
-```
+$$
 
-where:
+Only observations before time $t$ contribute to the estimate.
 
-```math
-\bar{R}_{t-1} =
+### 3.7 Exposure-Aware Adaptive CUSUM
+
+Let the original trading strategy exposure be:
+
+$$
+E_t^{(0)} \in [0,1]
+$$
+
+The strategy return is:
+
+$$
+R_t^{\mathrm{strategy}}
+=
+E_t^{(0)}R_t^{\mathrm{asset}}
+$$
+
+During active exposure, the detector uses:
+
+$$
+X_t =
+\frac{
+R_t^{\mathrm{strategy}}
+}{
+E_t^{(0)}
+},
+\qquad E_t^{(0)}>0
+$$
+
+Let $H_t$ contain the indices of the most recent $w$ active observations strictly before $t$.
+
+The historical active-return mean is:
+
+$$
+\bar{X}_{H_t}
+=
 \frac{1}{w}
-\sum_{i=t-w}^{t-1}R_i
-```
+\sum_{i\in H_t}X_i
+$$
 
-and:
+The active-return volatility estimate is:
 
-- $\hat{\sigma}_t$ is the estimated volatility at time $t$.
-- $w$ is the historical estimation window.
-- $\bar{R}_{t-1}$ is the mean of the preceding $w$ returns.
+$$
+\hat{\sigma}_t^{\mathrm{active}}
+=
+\sqrt{
+\frac{1}{w-1}
+\sum_{i\in H_t}
+(X_i-\bar{X}_{H_t})^2
+}
+$$
 
-Only returns observed before time $t$ are used to estimate volatility for time $t$.
+After the active-return warm-up, EDGEGUARD updates:
 
-This avoids look-ahead bias in the volatility estimator.
-
-### 4.4 Adaptive CUSUM Detector
-
-Adaptive CUSUM normalizes return deviations using estimated historical volatility:
-
-```math
+$$
 A_t =
 \max\left(
-0,\,
+0,
 A_{t-1}
 +
-\frac{\mu_0-R_t}
-{\max(\hat{\sigma}_t,\sigma_{\min})}
+\frac{
+\mu_0-X_t
+}{
+\max(
+\hat{\sigma}_t^{\mathrm{active}},
+\sigma_{\min}
+)
+}
 -k
 \right)
-```
+$$
 
 where:
 
-- $A_t$ is the adaptive CUSUM statistic.
-- $A_{t-1}$ is the previous cumulative statistic.
-- $\mu_0$ is the target expected return.
-- $R_t$ is the observed return.
-- $\hat{\sigma}_t$ is the historical volatility estimate.
-- $\sigma_{\min}$ is the minimum permitted volatility.
-- $k$ is the standardized allowance.
+- $A_t$ is the adaptive statistic.
+- $\mu_0$ is the reference mean.
+- $\sigma_{\min}$ is the volatility floor.
+- $k$ is the allowance.
 
-The effective volatility is:
+During inactive observations:
 
-```math
-\sigma_{\text{effective},t}
-=
-\max(\hat{\sigma}_t,\sigma_{\min})
-```
-
-The volatility floor prevents division by zero and limits excessive amplification of small return deviations.
+$$
+A_t=A_{t-1}
+$$
 
 An alarm occurs when:
 
-```math
-A_t > h
-```
+$$
+A_t>h_A
+$$
 
-where $h$ is the calibrated detection threshold.
+The historical detector records the first alarm while continuing to calculate the statistic.
 
-## 5. Evaluation Methodology
+### 3.8 Dynamic Exposure Control
 
-### 5.1 Monte Carlo Simulations
+Let $t_a$ be the first alarm observation.
 
-Experiments use seeded synthetic Gaussian return sequences.
+The exposure multiplier is:
 
-Different random seeds are used for calibration and independent evaluation.
+$$
+m_t =
+\begin{cases}
+1, & t\leq t_a \\
+0.25, & t>t_a
+\end{cases}
+$$
 
-The same independent test sequences are reused across detectors when performing paired comparisons.
+The controlled exposure is:
 
-### 5.2 Alarm Classification
-
-The first alarm is classified as:
-
-- **Premature alarm:** The first alarm occurs before the true regime-change point.
-- **Successful detection:** The first alarm occurs at or after the regime-change point.
-- **Missed detection:** No alarm occurs before the simulation ends.
-
-Each simulation contributes to exactly one of these categories.
-
-### 5.3 False-Alarm Probability
-
-The empirical false-alarm probability is:
-
-```math
-\widehat{P}_{FA}
+$$
+E_t^{\mathrm{controlled}}
 =
-\frac{N_{FA}}{N_{\text{sim}}}
-```
+E_t^{(0)}m_t
+$$
+
+If no alarm occurs:
+
+$$
+m_t=1
+$$
+
+Risk reduction begins on the observation following the alarm.
+
+### 3.9 Transaction Costs
+
+Exposure turnover is:
+
+$$
+T_t =
+|E_t-E_{t-1}|
+$$
+
+Transaction cost is:
+
+$$
+C_t =
+T_t\frac{b}{10000}
+$$
+
+where $b$ represents basis points.
+
+Gross return is:
+
+$$
+R_t^{\mathrm{gross}}
+=
+E_tR_t^{\mathrm{asset}}
+$$
+
+Net return is:
+
+$$
+R_t^{\mathrm{net}}
+=
+E_tR_t^{\mathrm{asset}}-C_t
+$$
+
+The historical backtest uses:
+
+$$
+b=5
+$$
+
+### 3.10 Equity and Maximum Drawdown
+
+Starting equity is:
+
+$$
+V_0=1
+$$
+
+The compounded equity curve is:
+
+$$
+V_t =
+\prod_{i=1}^{t}
+(1+R_i^{\mathrm{net}})
+$$
+
+The running peak is:
+
+$$
+P_t =
+\max(V_0,V_1,\ldots,V_t)
+$$
+
+The Python implementation stores drawdown as:
+
+$$
+DD_t =
+\frac{V_t}{P_t}-1
+$$
+
+Maximum drawdown is reported as a positive magnitude:
+
+$$
+\mathrm{MDD}
+=
+-\min_t DD_t
+$$
+
+### 3.11 Annualized Sharpe Ratio
+
+The backtester calculates:
+
+$$
+\widehat{SR}
+=
+\sqrt{252}
+\frac{
+\overline{R}^{\mathrm{net}}
+}{
+s(R^{\mathrm{net}})
+}
+$$
 
 where:
 
-- $N_{FA}$ is the number of simulations containing a false alarm.
-- $N_{\text{sim}}$ is the total number of simulations.
+- $\overline{R}^{\mathrm{net}}$ is average daily net return.
+- $s(R^{\mathrm{net}})$ is sample standard deviation.
+- 252 is the assumed number of trading days per year.
 
-### 5.4 Detection Delay
+The calculation assumes a zero risk-free rate.
 
-Detection delay is calculated as:
+---
 
-```math
-D = t_{\text{alarm}}-\tau
-```
+## 4. Statistical Evaluation
 
-where:
+### 4.1 Threshold Calibration
 
-- $D$ is the detection delay.
-- $t_{\text{alarm}}$ is the first alarm time.
-- $\tau$ is the true regime-change point.
+Thresholds are estimated using no-change simulations.
 
-Average detection delay is calculated only among successful detections.
+For target false-alarm probability $\alpha$:
 
-### 5.5 Threshold Calibration
-
-Thresholds are selected from maximum detector statistics observed on no-change calibration simulations.
-
-For a target false-alarm probability of $\alpha = 0.05$:
-
-```math
+$$
 h =
-Q_{1-\alpha}
-(M_1,\ldots,M_n)
-```
+Q_{1-\alpha}(M_1,\ldots,M_n)
+$$
 
-where:
+where $M_i$ is the maximum detector statistic from simulation $i$.
 
-- $h$ is the calibrated threshold.
-- $Q_{1-\alpha}$ is the empirical quantile.
-- $M_i$ is the maximum detector statistic in calibration simulation $i$.
-- $\alpha$ is the target false-alarm probability.
+### 4.2 Alarm Classification
 
-The resulting threshold is then evaluated on independent simulations.
+- **Premature:** First alarm before the change point.
+- **Successful:** First alarm at or after the change point.
+- **Missed:** No alarm before the observation horizon ends.
 
-## 6. Experimental Results
+### 4.3 Detection Delay
 
-### 6.1 Experiments 01–07: Statistical Foundations
+$$
+D =
+t_{\mathrm{alarm}}-\tau
+$$
 
-| Experiment | Main finding |
+Mean detection delay is calculated among successfully detected paths.
+
+### 4.4 Paired Statistical Comparison
+
+For paired outcome differences:
+
+$$
+d_i =
+Y_{i,\mathrm{EDGEGUARD}}
+-
+Y_{i,\mathrm{baseline}}
+$$
+
+The sample mean difference is:
+
+$$
+\bar{d}
+=
+\frac{1}{n}
+\sum_{i=1}^{n}d_i
+$$
+
+Paired bootstrap resampling is used to construct confidence intervals.
+
+---
+
+## 5. Historical Market Evaluation
+
+### 5.1 Data
+
+Historical adjusted closing prices were obtained using Yahoo Finance through `yfinance`.
+
+Assets:
+
+- SPY
+- QQQ
+- IWM
+- TLT
+
+Historical coverage: January 2010 through October 27, 2026.
+
+### 5.2 Chronological Splits
+
+| Period | Dates |
 |---|---|
-| 01 | Simulated deterioration from positive to negative expected returns |
-| 02 | Zero-threshold rolling mean produced 99.6% premature alarms |
-| 03 | Larger rolling windows reduced premature alarms |
-| 04 | No-change experiments exposed excessive false alarms |
-| 05 | Stronger thresholds reduced false alarms but increased missed detections |
-| 06 | Calibrated rolling mean achieved 59.6% successful detections |
-| 07 | Calibrated CUSUM achieved 93.8% successful detections |
+| Training | 2010–2018 |
+| Validation | 2019–2022 |
+| Final test | 2023–October 2026 |
 
-#### Experiment 06: Rolling-Mean Calibration
+### 5.3 Trading Strategy
 
-| Metric | Result |
+The underlying strategy uses a 50-day moving average.
+
+The previous closing signal determines the current exposure.
+
+### 5.4 Frozen Detector Parameters
+
+| Parameter | Value |
 |---|---:|
-| Calibrated threshold | -0.003852 |
-| No-change false-alarm proportion | 6.6% |
-| Premature alarms | 3.8% |
-| Successful detections | 59.6% |
-| Missed detections | 36.6% |
-| Average detection delay | 213.17 |
+| Strategy window | 50 |
+| Detector window | 50 |
+| Target mean | 0.0002299069244105812 |
+| Allowance | 0.1 |
+| Threshold | 25.0 |
+| Minimum volatility | 0.001 |
+| Reduced exposure | 0.25 |
+| Transaction costs | 5 basis points |
 
-#### Experiment 07: CUSUM Calibration
+### 5.5 Historical Findings
 
-| Metric | Result |
-|---|---:|
-| Calibrated threshold | 0.273950 |
-| No-change false-alarm proportion | 6.8% |
-| Premature alarms | 2.8% |
-| Successful detections | 93.8% |
-| Missed detections | 3.4% |
-| Average detection delay | 195.42 |
+No alarms occurred across the four final test assets.
 
-These results motivated further investigation of sequential detection methods.
+The controlled strategies therefore matched their unprotected baselines.
 
-### 6.2 Experiment 08: Volatility Robustness
+No historical improvement was demonstrated.
 
-Rolling-mean and CUSUM detectors were evaluated under four volatility conditions:
+---
 
-```math
-\sigma \in
-\{0.005,\ 0.010,\ 0.020,\ 0.030\}
-```
+## 6. Research Phases
 
-Both fixed-threshold methods experienced substantial performance deterioration under increased volatility.
+### Phase 1 — Statistical Foundations
 
-This motivated investigating volatility-normalized detection methods.
+**Experiments 01–07**
 
-### 6.3 Experiment 09: Volatility-Normalized CUSUM
+- Synthetic return simulation
+- Rolling-mean detector
+- Conventional CUSUM
+- Threshold calibration
+- Initial detector benchmarking
 
-The experiment normalized return deviations using known simulated volatility.
+### Phase 2 — Adaptive Detection
 
-| Volatility | Successful detections |
-|---|---:|
-| 0.005 | 87.4% |
-| 0.010 | 87.2% |
-| 0.020 | 61.0% |
-| 0.030 | 40.2% |
+**Experiments 08–13**
 
-Premature alarms were 12.6% across all four conditions.
+- Causal volatility estimation
+- Adaptive CUSUM
+- Volatility sensitivity
+- Conventional detector comparisons
 
-This experiment used true simulated volatility and therefore represents an oracle-style benchmark rather than a directly deployable detector.
+### Phase 3 — Risk Controller
 
-### 6.4 Experiment 10: Normalized CUSUM Calibration
+**Experiments 14–21**
 
-The normalized CUSUM detector was calibrated using no-change simulations.
+- Exposure reduction
+- Transaction-cost modeling
+- False-alarm opportunity costs
+- Simulated drawdown analysis
+- Bootstrap uncertainty estimates
 
-| Metric | Result |
-|---|---:|
-| Calibrated threshold | 27.394951 |
-| Independent no-change false-alarm proportion | 6.8% |
+### Phase 4 — Historical Validation
 
-The identical rates across volatility conditions were consistent with the Gaussian scaling assumptions and reuse of standardized random sequences.
+**Experiments 22–30**
 
-### 6.5 Experiment 11: Historical Volatility Estimation
+- Historical data integration
+- Chronological splitting
+- Causal moving-average strategy
+- Exposure-aware monitoring
+- Frozen out-of-sample evaluation
+- Documentation of null results
 
-Implemented a causal rolling sample-standard-deviation estimator.
+### Phase 5 — Advanced Research
 
-Automated tests verify:
+**Experiments 31–41**
 
-- Correct calculations
-- No future-information leakage
-- Invalid input handling
-- Zero-variance behavior
+- Controlled deterioration simulations
+- Mean-shift sensitivity
+- Volatility regime sensitivity
+- Conventional detector calibration
+- Paired detector comparisons
+- Economic risk-control simulations
+- Volatility misspecification analysis
+- Statistical confidence intervals
 
-The estimator was integrated into EDGEGUARD's reusable source code.
-
-### 6.6 Experiment 12: Adaptive CUSUM Calibration
-
-Three volatility floors were evaluated.
-
-| Volatility floor | Calibrated threshold | False-alarm proportion |
-|---|---:|---:|
-| 0.000001 | 28.233946 | 6.2% |
-| 0.000500 | 28.233946 | 6.2% |
-| 0.001000 | 28.233946 | 6.2% |
-
-All three volatility floors produced identical results under the tested conditions.
-
-This does not establish which floor is optimal.
-
-#### Adaptive CUSUM Detection Performance
-
-| Volatility | Successful detections | Missed detections | Average delay |
-|---|---:|---:|---:|
-| 0.005 | 98.0% | 0.0% | 78.75 |
-| 0.010 | 94.6% | 3.4% | 193.98 |
-| 0.020 | 43.6% | 54.4% | 267.10 |
-| 0.030 | 24.0% | 74.0% | 263.78 |
-
-Premature alarms were 2.0% across all four conditions.
-
-### 6.7 Experiment 13: Original vs Adaptive CUSUM
-
-The final Phase 2 experiment compared:
-
-1. Original CUSUM using true simulated volatility to scale its allowance.
-2. Adaptive CUSUM using causal historical volatility estimates.
-
-Both detectors were calibrated separately and evaluated on identical independent test sequences.
-
-#### Calibrated Thresholds
-
-| Volatility | Original CUSUM | Adaptive CUSUM |
-|---|---:|---:|
-| 0.005 | 0.136975 | 28.233946 |
-| 0.010 | 0.273950 | 28.233946 |
-| 0.020 | 0.547899 | 28.233946 |
-| 0.030 | 0.821849 | 28.233946 |
-
-The original CUSUM threshold scales with volatility because the statistic is measured in raw return units.
-
-The adaptive threshold remains constant in these experiments because the statistic uses volatility-normalized deviations.
-
-#### Independent False-Alarm Comparison
-
-| Volatility | Original CUSUM | Adaptive CUSUM |
-|---|---:|---:|
-| 0.005 | 6.8% | 6.2% |
-| 0.010 | 6.8% | 6.2% |
-| 0.020 | 6.8% | 6.2% |
-| 0.030 | 6.8% | 6.2% |
-
-The adaptive detector generated 31 false alarms out of 500 independent no-change simulations, compared with 34 for the original detector.
-
-This difference is small and does not establish statistical superiority.
-
-#### Successful Detection Comparison
-
-| Volatility | Original CUSUM | Adaptive CUSUM |
-|---|---:|---:|
-| 0.005 | 97.2% | 98.0% |
-| 0.010 | 93.8% | 94.6% |
-| 0.020 | 41.8% | 43.6% |
-| 0.030 | 24.6% | 24.0% |
-
-#### Missed Detection Comparison
-
-| Volatility | Original CUSUM | Adaptive CUSUM |
-|---|---:|---:|
-| 0.005 | 0.0% | 0.0% |
-| 0.010 | 3.4% | 3.4% |
-| 0.020 | 55.4% | 54.4% |
-| 0.030 | 72.6% | 74.0% |
-
-#### Conditional Average Detection Delays
-
-| Volatility | Original CUSUM | Adaptive CUSUM |
-|---|---:|---:|
-| 0.005 | 77.80 | 78.75 |
-| 0.010 | 195.42 | 193.98 |
-| 0.020 | 262.39 | 267.10 |
-| 0.030 | 267.41 | 263.78 |
-
-### 6.8 Interpretation of Final Results
-
-Adaptive CUSUM achieved broadly comparable performance to an oracle benchmark that knows the true simulated volatility.
-
-The adaptive detector achieved slightly higher successful-detection rates at three volatility levels and slightly lower performance at the highest volatility level.
-
-However, the observed differences were small.
-
-Confidence intervals and paired statistical tests have not yet established statistically significant superiority.
-
-Detection became substantially harder as volatility increased relative to the fixed change in expected return.
-
-The results support further investigation of causal volatility normalization but do not demonstrate that adaptive CUSUM is universally superior.
+---
 
 ## 7. Repository Structure
 
-```text
-EDGEGUARD/
-├── .vscode/
-│   └── settings.json
-├── src/
-│   └── edgeguard/
-│       ├── __init__.py
-│       ├── simulator.py
-│       ├── detectors.py
-│       └── volatility.py
-├── tests/
-│   ├── test_simulator.py
-│   ├── test_detectors.py
-│   └── test_volatility.py
-├── experiments/
-│   ├── experiment_01.py
-│   ├── experiment_02.py
-│   ├── experiment_03.py
-│   ├── experiment_04.py
-│   ├── experiment_05.py
-│   ├── experiment_06.py
-│   ├── experiment_07.py
-│   ├── experiment_08.py
-│   ├── experiment_09.py
-│   ├── experiment_10.py
-│   ├── experiment_11.py
-│   ├── experiment_12.py
-│   └── experiment_13.py
-├── results/
-│   └── experiment_01.png
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
+    EDGEGUARD/
+    ├── docs/
+    │   ├── evaluation_protocol.md
+    │   ├── phase4_results.md
+    │   └── reproducibility.md
+    ├── experiments/
+    │   ├── experiment_01.py
+    │   ├── ...
+    │   └── experiment_41.py
+    ├── research/
+    │   ├── final_report.md
+    │   ├── phase5_findings.md
+    │   └── phase5_plan.md
+    ├── scripts/
+    │   └── download_market_data.py
+    ├── src/
+    │   └── edgeguard/
+    │       ├── backtest.py
+    │       ├── baseline_detectors.py
+    │       ├── data_split.py
+    │       ├── detectors.py
+    │       ├── historical_data.py
+    │       ├── historical_detector.py
+    │       ├── historical_strategy.py
+    │       ├── risk_controller.py
+    │       ├── simulator.py
+    │       ├── statistical_evaluation.py
+    │       ├── transaction_costs.py
+    │       └── volatility.py
+    ├── tests/
+    ├── .gitignore
+    ├── README.md
+    └── requirements.txt
+
+---
 
 ## 8. Installation and Reproducibility
 
-### 8.1 Clone the Repository
+### Clone the Repository
 
-```bash
-git clone https://github.com/annalii0810/EDGEGUARD.git
-cd EDGEGUARD
-```
+    git clone https://github.com/annalii0810/EDGEGUARD.git
+    cd EDGEGUARD
 
-### 8.2 Create a Virtual Environment
+### Create a Virtual Environment
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
+    python3 -m venv .venv
+    source .venv/bin/activate
 
-### 8.3 Install Dependencies
+### Install Dependencies
 
-```bash
-python -m pip install -r requirements.txt
-```
+    python -m pip install -r requirements.txt
 
-### 8.4 Run Automated Tests
+### Run Automated Tests
 
-```bash
-PYTHONPATH=src python -m pytest -v
-```
+    PYTHONPATH=src python -m pytest tests/ -q
 
-The latest complete test run passed all 25 automated tests.
+The latest complete test suite passed 99 tests.
 
-### 8.5 Run Experiments
+### Run Synthetic Experiments
 
-For example:
+    PYTHONPATH=src python experiments/experiment_35.py
 
-```bash
-PYTHONPATH=src python experiments/experiment_13.py
-```
+    PYTHONPATH=src python experiments/experiment_36.py
 
-Other experiments can be executed by replacing the experiment filename.
+    PYTHONPATH=src python experiments/experiment_37.py
 
-The experiments use seeded random-number generation to support reproducibility.
+    PYTHONPATH=src python experiments/experiment_39.py
+
+    PYTHONPATH=src python experiments/experiment_40.py
+
+    PYTHONPATH=src python experiments/experiment_41.py
+
+### Historical Data Reproduction
+
+The historical download script is:
+
+    scripts/download_market_data.py
+
+Historical datasets are excluded from Git.
+
+See `docs/reproducibility.md` for dataset fingerprints and software versions.
+
+The original historical test period has already been evaluated and must not be reused as an untouched test set.
+
+---
 
 ## 9. Research Limitations
 
-The current project has several important limitations.
+### Statistical
 
-- Returns are synthetic, independent, and Gaussian.
-- Expected returns and volatility are specified by the simulator.
-- The original CUSUM oracle benchmark uses true simulated volatility.
-- Some volatility comparisons reuse standardized random sequences.
-- Only a limited set of regime-change scenarios has been tested.
-- Detection delay is conditional on successful detection.
-- Confidence intervals and formal paired statistical tests remain future work.
-- Volatility floors and detector parameters are not proven optimal.
-- Autocorrelation, heavy tails, and volatility clustering have not yet been evaluated.
-- Historical market data and live execution are not included.
-- Transaction costs, slippage, and real-world profitability have not been established.
+- Synthetic returns use simplified Gaussian assumptions.
+- Deterioration follows predetermined mean shifts.
+- Heavy tails and volatility clustering require further evaluation.
+- Detector thresholds are not proven optimal.
+- Detection delay estimates are conditional on successful detections.
+- Multiple exploratory experiments introduce model-selection uncertainty.
 
-The results should be interpreted as controlled simulation findings, not evidence of profitable live trading.
+### Historical
+
+- No detector alarms occurred in the frozen final test.
+- No historical economic improvement was demonstrated.
+- Only four ETFs were evaluated.
+- The underlying strategy is a simple moving-average benchmark.
+
+### Economic
+
+- Transaction costs use a simplified proportional model.
+- Market impact and financing costs are not fully modeled.
+- False alarms can sacrifice profitable exposure.
+- Synthetic results do not establish live profitability.
+
+### Detector Comparisons
+
+- Some conventional baselines use true simulated volatility.
+- Fixed-volatility methods are sensitive to scale misspecification.
+- General superiority of EDGEGUARD has not been established.
+
+---
 
 ## 10. Research Roadmap
 
 ### Phase 1 — Statistical Foundations
 
-- [x] Synthetic return simulator
-- [x] Rolling-mean detector
-- [x] Original CUSUM detector
-- [x] Initial calibration and benchmarking
+- [x] Return simulation
+- [x] Rolling-mean detection
+- [x] Conventional CUSUM
+- [x] Threshold calibration
 
-### Phase 2 — Adaptive Statistical Detection
+### Phase 2 — Adaptive Detection
 
-- [x] Volatility robustness experiments
-- [x] Historical volatility estimator
-- [x] Adaptive CUSUM detector
-- [x] Automated tests
-- [x] Independent calibration and evaluation
-- [x] Original versus adaptive CUSUM comparison
+- [x] Historical volatility estimation
+- [x] Adaptive CUSUM
+- [x] Robustness testing
+- [x] Baseline comparisons
 
-### Phase 3 — Adaptive Risk Controller
+### Phase 3 — Risk Controller
 
-- [ ] Implement simulated exposure-reduction decisions
-- [ ] Compare monitored and unmonitored strategies
-- [ ] Model false-alarm and delayed-detection costs
-- [ ] Evaluate drawdown, turnover, and risk-adjusted returns
+- [x] Exposure reduction
+- [x] Transaction-cost modeling
+- [x] Economic evaluation
+- [x] Bootstrap analysis
 
 ### Phase 4 — Historical Validation
 
-- [ ] Integrate historical market data
-- [ ] Use chronological out-of-sample evaluation
-- [ ] Model transaction costs and slippage
-- [ ] Test robustness under realistic market conditions
+- [x] Historical market data
+- [x] Chronological splitting
+- [x] Frozen detector configuration
+- [x] Out-of-sample evaluation
+- [x] Null-result documentation
 
-### Phase 5 — Research Portfolio
+### Phase 5 — Advanced Research
 
-- [ ] Produce publication-quality figures
-- [ ] Build a research dashboard
-- [ ] Prepare a formal technical report
-- [ ] Document limitations and failure cases
+- [x] Controlled deterioration experiments
+- [x] Volatility sensitivity
+- [x] Paired detector comparisons
+- [x] Economic simulations
+- [x] Confidence intervals
+- [x] Research report draft
+- [ ] Final methodological review
+- [ ] Independent academic review
+- [ ] Final portfolio presentation
+
+---
 
 ## 11. Research Integrity
 
-EDGEGUARD is an educational quantitative research project.
+EDGEGUARD is an independent quantitative research and software engineering project.
 
-All reported experimental results are derived from synthetic simulations.
+The frozen historical evaluation and later exploratory synthetic experiments are reported separately.
 
-The project does not demonstrate profitable live trading, establish statistically significant superiority of adaptive CUSUM, or claim the invention of a novel change-detection algorithm.
+Positive, negative, and null findings are preserved.
 
-Its longer-term objective is to evaluate whether carefully calibrated statistical monitoring can support more reliable simulated trading risk-control decisions.
+The project does not establish profitable live trading, general statistical superiority, or a fundamentally novel detection algorithm.
 
-## Phase 3 — Adaptive Risk Controller
+The primary contribution is a reproducible framework for investigating statistical deterioration detection and economic risk-control decisions.
 
-### Overview
+---
 
-Phase 3 investigates whether statistical deterioration
-signals can improve simulated trading risk management.
+## 12. Research Documentation
 
-EDGEGUARD combines a volatility-normalized adaptive
-CUSUM detector with an exposure-reduction controller.
+- [Final Research Report](research/final_report.md)
+- [Phase 5 Findings](research/phase5_findings.md)
+- [Phase 5 Plan](research/phase5_plan.md)
+- [Historical Evaluation Protocol](docs/evaluation_protocol.md)
+- [Historical Results](docs/phase4_results.md)
+- [Reproducibility Record](docs/reproducibility.md)
 
-When deterioration is detected, the controller reduces
-strategy exposure beginning with the next observation,
-avoiding same-period look-ahead bias.
+---
 
-### Implemented Components
+## 13. Future Research
 
-- Adaptive risk controller (`risk_controller.py`)
-- Transaction-cost model (`transaction_costs.py`)
-- Commission and slippage sensitivity analysis
-- Monte Carlo performance evaluation
-- False-alarm economic cost analysis
-- Exposure-policy comparison
-- Robustness testing
-- Bootstrap confidence intervals
+Potential extensions include:
 
-### Experiments
+- GARCH volatility models
+- Heavy-tailed return simulations
+- Autocorrelated return processes
+- Multiple deterioration and recovery regimes
+- Alternative adaptive change-point detectors
+- Recovery-aware exposure policies
+- More realistic transaction-cost models
+- Prospective evaluation on new market data
 
-| Experiment | Description |
-|---|---|
-| 14 | Risk-controller baseline evaluation |
-| 15 | Adaptive CUSUM integration |
-| 16 | Monte Carlo risk-controller evaluation |
-| 17 | False-alarm economic cost |
-| 18 | Exposure-reduction policy comparison |
-| 19 | Transaction-cost sensitivity |
-| 20 | Robustness across simulated market conditions |
-| 21 | Bootstrap confidence intervals |
+---
 
-### Main Findings
+## Disclaimer
 
-**Experiment 16 — Monte Carlo Evaluation**
+EDGEGUARD is an educational and exploratory quantitative research project.
 
-Across 500 synthetic deterioration paths:
-
-- Average return improvement: +22.42 percentage points
-- Average drawdown reduction: 14.49 percentage points
-- Return improved on 89.0% of paths
-- Drawdown reduced on 92.6% of paths
-
-**Experiment 17 — False-Alarm Costs**
-
-Across 500 no-change simulations:
-
-- Average return difference: -1.78 percentage points
-- Average drawdown reduction: 0.12 percentage points
-- Average conditional return difference following
-  false alarms: -42.33 percentage points
-
-These results illustrate the opportunity cost of
-unnecessary exposure reductions.
-
-**Experiment 19 — Transaction Costs**
-
-Three proportional-cost scenarios were evaluated:
-
-- Low: 2 basis points
-- Medium: 10 basis points
-- High: 30 basis points
-
-The modeled costs had relatively small effects because
-the controller makes at most one exposure reduction.
-
-**Experiment 20 — Robustness**
-
-The controller was evaluated across 36 combinations
-of volatility, deterioration magnitude, and change point,
-using 3,600 simulated paths.
-
-Detection reliability decreased substantially under
-higher volatility and weaker deterioration.
-
-Some scenarios produced negative average return
-improvements.
-
-**Experiment 21 — Statistical Confidence Intervals**
-
-Across 500 independent synthetic deterioration paths
-and 2,000 bootstrap resamples:
-
-| Metric | Mean improvement | 95% bootstrap CI |
-|---|---:|---|
-| Total return | +22.79 pp | [+21.46, +24.19] pp |
-| Maximum drawdown reduction | +14.63 pp | [+13.96, +15.30] pp |
-
-These intervals quantify simulation uncertainty under
-the specified model. They do not establish real-market
-profitability or account for all model-selection uncertainty.
-
-### Limitations
-
-- Returns are generated using simplified Gaussian models.
-- The simulations do not represent historical market data.
-- Transaction costs use a simplified proportional model.
-- Financing, nonlinear market impact, and portfolio-weight
-  drift are not modeled.
-- The exposure policy is not statistically proven optimal.
-- Performance depends on the assumed deterioration regime.
-- Real-world trading effectiveness remains unverified.
-
-### Verification
-
-The complete automated test suite passed 38 tests.
-
-Python syntax checks completed successfully.
-
-### Conclusion
-
-Phase 3 demonstrates that adaptive exposure reduction
-can improve simulated outcomes when trading strategy
-profitability deteriorates.
-
-However, unnecessary alarms can sacrifice profits,
-and detection reliability declines under difficult
-market conditions.
-
-Further validation using historical data, realistic
-execution assumptions, and independent out-of-sample
-testing is necessary.
+The results are not investment advice or evidence of a profitable deployable trading strategy.
