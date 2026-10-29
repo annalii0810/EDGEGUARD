@@ -139,9 +139,9 @@ This demonstrates sensitivity to volatility misspecification in the fixed-volati
 
 Synthetic returns follow:
 
-$$
+```math
 R_t = \mu_t + \sigma Z_t
-$$
+```
 
 where:
 
@@ -150,21 +150,21 @@ where:
 - $\sigma$ is volatility.
 - $Z_t$ is standard normal noise.
 
-$$
+```math
 Z_t \sim \mathcal{N}(0,1)
-$$
+```
 
 ### 3.2 Regime Deterioration
 
 Expected return changes at observation $\tau$:
 
-$$
+```math
 \mu_t =
 \begin{cases}
 \mu_0, & t < \tau \\
 \mu_1, & t \geq \tau
 \end{cases}
-$$
+```
 
 where:
 
@@ -186,15 +186,15 @@ Phase 5 reference simulation:
 
 The rolling mean is:
 
-$$
+```math
 \bar{R}_t =
 \frac{1}{w}
 \sum_{i=t-w+1}^{t}R_i
-$$
+```
 
 The standardized detection statistic is:
 
-$$
+```math
 M_t =
 \max\left(
 0,
@@ -204,13 +204,13 @@ M_t =
 \sigma_{\mathrm{ref}}
 }
 \right)
-$$
+```
 
 An alarm occurs when:
 
-$$
+```math
 M_t > h_M
-$$
+```
 
 The current observation contributes to the statistic.
 
@@ -220,13 +220,13 @@ Therefore, any resulting trading action must occur no earlier than the next obse
 
 The downward CUSUM statistic is:
 
-$$
+```math
 S_t =
 \max\left(
 0,
 S_{t-1}+\mu_0-R_t-\delta
 \right)
-$$
+```
 
 where:
 
@@ -236,15 +236,15 @@ where:
 
 An alarm occurs when:
 
-$$
+```math
 S_t > h_S
-$$
+```
 
 ### 3.5 Standardized CUSUM
 
 The standardized CUSUM baseline uses:
 
-$$
+```math
 C_t =
 \max\left(
 0,
@@ -253,7 +253,7 @@ C_{t-1}
 \frac{\mu_0-R_t}{\sigma_{\mathrm{ref}}}
 -k
 \right)
-$$
+```
 
 where:
 
@@ -262,24 +262,24 @@ where:
 
 An alarm occurs when:
 
-$$
+```math
 C_t > h_C
-$$
+```
 
 ### 3.6 Causal Volatility Estimation
 
 The rolling historical mean is:
 
-$$
+```math
 \bar{R}_{t-1}^{(w)}
 =
 \frac{1}{w}
 \sum_{i=t-w}^{t-1}R_i
-$$
+```
 
 The sample volatility estimate is:
 
-$$
+```math
 \hat{\sigma}_t
 =
 \sqrt{
@@ -289,7 +289,7 @@ $$
 R_i-\bar{R}_{t-1}^{(w)}
 \right)^2
 }
-$$
+```
 
 Only observations before time $t$ contribute to the estimate.
 
@@ -297,21 +297,21 @@ Only observations before time $t$ contribute to the estimate.
 
 Let the original trading strategy exposure be:
 
-$$
+```math
 E_t^{(0)} \in [0,1]
-$$
+```
 
 The strategy return is:
 
-$$
+```math
 R_t^{\mathrm{strategy}}
 =
 E_t^{(0)}R_t^{\mathrm{asset}}
-$$
+```
 
 During active exposure, the detector uses:
 
-$$
+```math
 X_t =
 \frac{
 R_t^{\mathrm{strategy}}
@@ -319,22 +319,22 @@ R_t^{\mathrm{strategy}}
 E_t^{(0)}
 },
 \qquad E_t^{(0)}>0
-$$
+```
 
 Let $H_t$ contain the indices of the most recent $w$ active observations strictly before $t$.
 
 The historical active-return mean is:
 
-$$
+```math
 \bar{X}_{H_t}
 =
 \frac{1}{w}
 \sum_{i\in H_t}X_i
-$$
+```
 
 The active-return volatility estimate is:
 
-$$
+```math
 \hat{\sigma}_t^{\mathrm{active}}
 =
 \sqrt{
@@ -342,11 +342,11 @@ $$
 \sum_{i\in H_t}
 (X_i-\bar{X}_{H_t})^2
 }
-$$
+```
 
 After the active-return warm-up, EDGEGUARD updates:
 
-$$
+```math
 A_t =
 \max\left(
 0,
@@ -362,7 +362,7 @@ A_{t-1}
 }
 -k
 \right)
-$$
+```
 
 where:
 
@@ -373,15 +373,15 @@ where:
 
 During inactive observations:
 
-$$
+```math
 A_t=A_{t-1}
-$$
+```
 
 An alarm occurs when:
 
-$$
+```math
 A_t>h_A
-$$
+```
 
 The historical detector records the first alarm while continuing to calculate the statistic.
 
@@ -391,27 +391,27 @@ Let $t_a$ be the first alarm observation.
 
 The exposure multiplier is:
 
-$$
+```math
 m_t =
 \begin{cases}
 1, & t\leq t_a \\
 0.25, & t>t_a
 \end{cases}
-$$
+```
 
 The controlled exposure is:
 
-$$
+```math
 E_t^{\mathrm{controlled}}
 =
 E_t^{(0)}m_t
-$$
+```
 
 If no alarm occurs:
 
-$$
+```math
 m_t=1
-$$
+```
 
 Risk reduction begins on the observation following the alarm.
 
@@ -419,85 +419,85 @@ Risk reduction begins on the observation following the alarm.
 
 Exposure turnover is:
 
-$$
+```math
 T_t =
 |E_t-E_{t-1}|
-$$
+```
 
 Transaction cost is:
 
-$$
+```math
 C_t =
 T_t\frac{b}{10000}
-$$
+```
 
 where $b$ represents basis points.
 
 Gross return is:
 
-$$
+```math
 R_t^{\mathrm{gross}}
 =
 E_tR_t^{\mathrm{asset}}
-$$
+```
 
 Net return is:
 
-$$
+```math
 R_t^{\mathrm{net}}
 =
 E_tR_t^{\mathrm{asset}}-C_t
-$$
+```
 
 The historical backtest uses:
 
-$$
+```math
 b=5
-$$
+```
 
 ### 3.10 Equity and Maximum Drawdown
 
 Starting equity is:
 
-$$
+```math
 V_0=1
-$$
+```
 
 The compounded equity curve is:
 
-$$
+```math
 V_t =
 \prod_{i=1}^{t}
 (1+R_i^{\mathrm{net}})
-$$
+```
 
 The running peak is:
 
-$$
+```math
 P_t =
 \max(V_0,V_1,\ldots,V_t)
-$$
+```
 
 The Python implementation stores drawdown as:
 
-$$
+```math
 DD_t =
 \frac{V_t}{P_t}-1
-$$
+```
 
 Maximum drawdown is reported as a positive magnitude:
 
-$$
+```math
 \mathrm{MDD}
 =
 -\min_t DD_t
-$$
+```
 
 ### 3.11 Annualized Sharpe Ratio
 
 The backtester calculates:
 
-$$
+```math
 \widehat{SR}
 =
 \sqrt{252}
@@ -506,7 +506,7 @@ $$
 }{
 s(R^{\mathrm{net}})
 }
-$$
+```
 
 where:
 
@@ -526,10 +526,10 @@ Thresholds are estimated using no-change simulations.
 
 For target false-alarm probability $\alpha$:
 
-$$
+```math
 h =
 Q_{1-\alpha}(M_1,\ldots,M_n)
-$$
+```
 
 where $M_i$ is the maximum detector statistic from simulation $i$.
 
@@ -541,10 +541,10 @@ where $M_i$ is the maximum detector statistic from simulation $i$.
 
 ### 4.3 Detection Delay
 
-$$
+```math
 D =
 t_{\mathrm{alarm}}-\tau
-$$
+```
 
 Mean detection delay is calculated among successfully detected paths.
 
@@ -552,21 +552,21 @@ Mean detection delay is calculated among successfully detected paths.
 
 For paired outcome differences:
 
-$$
+```math
 d_i =
 Y_{i,\mathrm{EDGEGUARD}}
 -
 Y_{i,\mathrm{baseline}}
-$$
+```
 
 The sample mean difference is:
 
-$$
+```math
 \bar{d}
 =
 \frac{1}{n}
 \sum_{i=1}^{n}d_i
-$$
+```
 
 Paired bootstrap resampling is used to construct confidence intervals.
 
